@@ -1,0 +1,13 @@
+xgboost
+lightgbm
+catboost
+fastapi
+python-multipar
+uvicorn 
+pandas 
+openpyxl 
+pyarrow
+ollama
+python-dotenv
+context
+generators

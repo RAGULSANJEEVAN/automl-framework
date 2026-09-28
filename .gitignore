@@ -1,0 +1,61 @@
+# =========================
+# Python Backend
+# =========================
+
+Backend/__pycache__/
+Backend/**/__pycache__/
+Backend/*.pyc
+Backend/**/*.pyc
+
+# Virtual environments
+Backend/venv/
+Backend/.venv/
+Backend/env/
+
+# Environment variables
+Backend/.env
+Backend/**/*.env
+
+# Uploaded datasets/files
+Backend/uploads/
+Backend/storage/
+
+# Generated reports
+Backend/reports/
+
+# Generated AI reports
+Backend/ai_report/
+
+# Python/Jupyter
+.ipynb_checkpoints/
+
+# Logs
+Backend/**/*.log
+
+
+# =========================
+# Angular Frontend
+# =========================
+
+Frontend/automl-schematic-angular/node_modules/
+Frontend/automl-schematic-angular/.angular/
+
+# Angular build output
+Frontend/automl-schematic-angular/dist/
+
+# Environment files
+Frontend/automl-schematic-angular/src/environments/*.local.*
+
+
+# =========================
+# VS Code
+# =========================
+
+.vscode/
+
+# =========================
+# OS
+# =========================
+
+.DS_Store
+Thumbs.db

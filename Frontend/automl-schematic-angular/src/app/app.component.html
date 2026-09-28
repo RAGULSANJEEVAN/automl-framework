@@ -1,0 +1,391 @@
+<div class="grid-bg"></div>
+<div class="vignette"></div>
+<div class="reg tl"><span></span></div>
+<div class="reg tr"><span></span></div>
+<div class="reg bl"><span></span></div>
+<div class="reg br"><span></span></div>
+
+<header class="nav">
+  <div class="logo"><span class="dot"></span>AUTOML // SCHEMATIC</div>
+  <div class="rev-pill"><span class="blip"></span>{{ datasetId ? 'Dataset ' + datasetId.slice(0,8) + '…' : 'No dataset loaded' }}</div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-tag">◆ Drafting sheet 01 of 01</div>
+    <div class="hero-frame">
+      <h1>Turn a dataset into a<br><em>working model,</em> to spec.</h1>
+    </div>
+    <div class="dim-line"><span class="tick"></span><span class="bar"></span>upload → target → run pipeline<span class="bar"></span><span class="tick"></span></div>
+    <p class="lede">Load a CSV, confirm the target column, and the pipeline runs analysis, recommendation, preprocessing, and training against your live backend.</p>
+    <div class="hero-cta">
+      <a href="#stage1" class="btn btn-primary">Open sheet ↓</a>
+      <a href="#stage3" class="btn btn-ghost">Jump to results</a>
+    </div>
+  </section>
+
+  <section class="sheet">
+
+    <!-- STAGE 1 -->
+    <div class="stage" [ngClass]="stage1Class" id="stage1">
+      <div class="stage-head">
+        <div class="fig-badge"><b>01</b><span>FIG</span></div>
+        <div>
+          <div class="stage-title">Data intake<span>/ POST /api/upload</span></div>
+          <div class="stage-sub">Drag a CSV in, or click to browse.</div>
+        </div>
+      </div>
+      <div class="frame">
+        <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span>
+
+        <div class="dropzone"
+             [class.drag-active]="dragActive"
+             tabindex="0" role="button" aria-label="Upload dataset"
+             (click)="fileInput.click()"
+             (dragover)="onDragOver($event)"
+             (dragleave)="onDragLeave($event)"
+             (drop)="onDrop($event)"
+             (keydown.enter)="fileInput.click()"
+             (keydown.space)="fileInput.click()">
+          <div class="dz-icon"><span>▦</span></div>
+          <div class="dz-title" *ngIf="!uploading">Drop CSV file here</div>
+          <div class="dz-title" *ngIf="uploading">Uploading & parsing…</div>
+          <div class="dz-sub">or <b>click to browse</b> · .csv up to 50MB</div>
+        </div>
+        <input #fileInput type="file" accept=".csv,text/csv" (change)="onFileSelected($event)">
+
+        <div class="file-chip" *ngIf="fileLoaded">
+          <div class="ficon">▤</div>
+          <div>
+            <div class="fname">{{ fileName }}</div>
+            <div class="fmeta">{{ fileMeta }}</div>
+          </div>
+          <div class="fstatus">● parsed</div>
+        </div>
+
+        <p class="empty-hint" style="color:#f87171; margin-top:14px;" *ngIf="uploadError">{{ uploadError }}</p>
+
+        <div *ngIf="rawResponses['upload']" style="margin-top:14px;">
+          <button class="link-btn" (click)="toggleRaw('upload')">{{ showRaw['upload'] ? 'Hide' : 'Show' }} raw response</button>
+          <pre *ngIf="showRaw['upload']" style="margin-top:10px; font-size:.72rem; color:var(--muted); background:var(--bg-deep); padding:14px; border:1px solid var(--line-dim); overflow:auto; max-height:260px;">{{ rawJson('upload') }}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-connector"><div class="dash"></div></div>
+
+    <!-- STAGE 2 -->
+    <div class="stage" [ngClass]="stage2Class" id="stage2">
+      <div class="stage-head">
+        <div class="fig-badge"><b>02</b><span>FIG</span></div>
+        <div>
+          <div class="stage-title">Target column<span>/ POST /api/target</span></div>
+          <div class="stage-sub">Pick the column you want to predict. This is saved to the backend as soon as you select it.</div>
+        </div>
+      </div>
+      <div class="frame">
+        <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span>
+
+        <div class="col-toolbar">
+          <span class="count">{{ columns.length ? columns.length + ' columns detected' : 'Waiting for a dataset…' }}</span>
+          <span class="count" *ngIf="targetStatus==='saving'">saving target…</span>
+          <span class="count" *ngIf="targetStatus==='saved'" style="color:var(--ok);">target saved ✓</span>
+        </div>
+
+        <div class="col-list">
+          <div class="empty-hint" *ngIf="!columns.length">// columns will render here once a file is uploaded</div>
+
+          <div class="col-row" *ngFor="let col of columns; let i = index" [style.animation-delay.ms]="i*45">
+            <span class="col-name">{{ col.name }}</span>
+            <span></span>
+            <span class="col-badge" [ngClass]="col.type">{{ col.type }}</span>
+            <label class="target-radio">
+              <input type="radio" name="target" [value]="i" [checked]="i===targetIndex" (change)="selectTarget(i)"> target
+            </label>
+          </div>
+        </div>
+
+        <p class="empty-hint" style="color:#f87171; margin-top:14px;" *ngIf="targetError">{{ targetError }}</p>
+      </div>
+    </div>
+
+    <div class="stage-connector"><div class="dash"></div></div>
+
+    <!-- STAGE 3 -->
+    <div class="stage" [ngClass]="stage3Class" id="stage3">
+      <div class="stage-head">
+        <div class="fig-badge"><b>03</b><span>FIG</span></div>
+        <div>
+          <div class="stage-title">Run pipeline<span>/ analyze → recommend → preprocess → train</span></div>
+          <div class="stage-sub">Runs the full backend pipeline in sequence and compiles the results below.</div>
+        </div>
+      </div>
+      <div class="frame">
+        <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span>
+
+        <div class="train-row">
+          <button class="btn btn-primary" [disabled]="!isReady || running" (click)="runPipeline()">▶ Run pipeline</button>
+          <span id="runHint">{{ runHintText }}</span>
+        </div>
+
+        <div class="progress-wrap" [class.show]="showProgress">
+          <div class="progress-track"><div class="progress-fill" [style.width.%]="progress"></div></div>
+          <div class="model-race">
+            <div class="model-item show" *ngFor="let s of steps" [class.done]="s.status==='done'" [ngStyle]="{color: s.status==='error' ? '#f87171' : null}">
+              <span class="chk" [ngStyle]="{'border-color': s.status==='error' ? '#f87171' : null, color: s.status==='error' ? '#f87171' : null}">
+                {{ s.status==='done' ? '✓' : (s.status==='error' ? '✕' : (s.status==='running' ? '…' : '')) }}
+              </span>
+              <span class="mname">{{ s.label }}</span>
+              <button class="link-btn" style="margin-left:auto;" *ngIf="rawResponses[s.key]" (click)="toggleRaw(s.key)">
+                {{ showRaw[s.key] ? 'hide' : 'raw' }}
+              </button>
+            </div>
+          </div>
+
+          <div *ngFor="let s of steps">
+            <pre *ngIf="showRaw[s.key]" style="margin-top:10px; font-size:.72rem; color:var(--muted); background:var(--bg-deep); padding:14px; border:1px solid var(--line-dim); overflow:auto; max-height:260px;">{{ rawJson(s.key) }}</pre>
+          </div>
+
+          <p class="empty-hint" style="color:#f87171; margin-top:14px;" *ngIf="pipelineError">{{ pipelineError }}</p>
+        </div>
+
+        <!-- <div class="results-wrap" [class.show]="resultsReady">
+          <p class="empty-hint" *ngIf="datasetSummary" style="margin-bottom:16px;">{{ datasetSummary }}</p>
+
+          <div class="subhead">Best model</div>
+          <p style="font-family:var(--font-head); color:var(--amber); font-size:1.15rem; font-weight:600;" *ngIf="bestModel">{{ bestModel }}</p>
+          <p class="empty-hint" *ngIf="!bestModel">No best-model field found in the response — see raw responses above.</p>
+
+          <ng-container *ngIf="metrics.length">
+            <div class="subhead">Model performance <span style="color:var(--muted-dim); font-weight:400; text-transform:none; letter-spacing:0;">(tuned)</span></div>
+            <div class="metric-grid">
+              <div class="metric-card" *ngFor="let m of metrics">
+                <div class="mlabel">{{ m.label }}</div>
+                <div class="mval">{{ m.val }}</div>
+              </div>
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="modelComparison.length">
+            <div class="subhead">Model comparison</div>
+            <table class="pred-table">
+              <thead><tr><th>Model</th><th>R²</th><th>RMSE</th><th>MAE</th><th>MSE</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let m of modelComparison">
+                  <td [style.color]="m.model===bestModel ? 'var(--amber)' : null">{{ m.model }}</td>
+                  <td>{{ m.r2 }}</td>
+                  <td>{{ m.rmse }}</td>
+                  <td>{{ m.mae }}</td>
+                  <td>{{ m.mse }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </ng-container>
+
+          <ng-container *ngIf="importantFeatureNames.length">
+            <div class="subhead">Important features ({{ importantFeatureCount }})</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              <span class="col-badge numeric" *ngFor="let f of importantFeatureNames">{{ f }}</span>
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="crossValidation">
+            <div class="subhead">Cross-validation</div>
+            <p class="empty-hint">Mean {{ crossValidation.mean }} across {{ crossValidation.scores.length }} folds: [{{ crossValidation.scores.join(', ') }}]</p>
+          </ng-container>
+
+          <ng-container *ngIf="predictions.length">
+            <div class="subhead">Sample predictions</div>
+            <table class="pred-table">
+              <thead><tr><th>Actual</th><th>Predicted</th><th>Abs. error</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let p of predictions">
+                  <td>{{ p.actual }}</td>
+                  <td>{{ p.predicted }}</td>
+                  <td>{{ p.error }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </ng-container>
+
+          <ng-container *ngIf="reportText">
+            <div class="subhead">AI report</div>
+            <pre style="white-space:pre-wrap; font-family:var(--font-body); font-size:.9rem; color:var(--muted); line-height:1.7;">{{ reportText }}</pre>
+          </ng-container>
+        </div> -->
+      </div>
+    </div>
+
+    <div class="stage-connector"><div class="dash"></div></div>
+
+    <!-- STAGE 4 -->
+    <div class="stage" [ngClass]="stage4Class" id="stage4">
+      <div class="stage-head">
+        <div class="fig-badge"><b>04</b><span>FIG</span></div>
+        <div>
+          <div class="stage-title">View Results<span>/ insights → metrics → predictions → AI report</span></div>
+          <div class="stage-sub">Explore the generated analysis, model performance, predictions, and AI-powered report. Download the detailed report for further review.</div>
+        </div>
+      </div>
+      <div class="frame">
+        <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span>
+
+        <div class="results-header">
+          <div>
+            <div class="empty-hint">🤖 AI Report & Model Insights</div>
+            <br>
+            <div class="empty-hint">
+              Explore the complete analysis of your dataset, preprocessing recommendations,
+              model performance, evaluation metrics, feature importance, and AI-generated
+              business insights. You can review the results and download the detailed report.
+            </div>
+          </div>
+        </div>
+        <br>
+        <div class="report-status-card" *ngIf="reportStatus">
+          <div class="subhead">Report Progress</div>
+          <div class="progress-track">
+        
+            <div class="progress-fill" [style.width.%]="reportStatus.progress">
+            </div>
+        
+          </div>
+        
+          <table class="pred-table status-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Current Step</th>
+                <th>Progress</th>
+              </tr>
+            </thead>
+        
+            <tbody>
+              <tr>
+                <td>
+                  <span class="status-badge" [ngClass]="reportStatus.status">
+                    {{ reportStatus.status | titlecase }}
+                  </span>
+                </td>
+        
+                <td>
+                  {{ reportStatus.current_step }}
+                </td>
+        
+                <td>
+                  <div class="progress-cell">
+                    <div class="mini-progress">
+                      <div class="mini-progress-fill" [style.width.%]="reportStatus.progress">
+                      </div>
+                    </div>
+        
+                    <span>{{ reportStatus.progress }}%</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        
+        
+        </div>
+
+        <br>
+
+        <div class="results-wrap" [class.show]="resultsReady">
+          <p class="empty-hint" style="color:var(--amber);" *ngIf="datasetSummary" style="margin-bottom:16px;">{{ datasetSummary }}</p>
+
+          <div class="subhead">Best model</div>
+          <p style="font-family:var(--font-head); color:var(--amber); font-size:1.15rem; font-weight:600;" *ngIf="bestModel">{{ bestModel }}</p>
+          <p class="empty-hint" *ngIf="!bestModel">No best-model field found in the response — see raw responses above.</p>
+
+          <ng-container *ngIf="metrics.length">
+            <div class="subhead">Model performance <span style="color:var(--muted-dim); font-weight:400; text-transform:none; letter-spacing:0;">(tuned)</span></div>
+            <div class="metric-grid">
+              <div class="metric-card" *ngFor="let m of metrics">
+                <div class="mlabel">{{ m.label }}</div>
+                <div class="mval">{{ m.val }}</div>
+              </div>
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="modelComparison.length">
+            <div class="subhead">Model comparison</div>
+            <table class="pred-table">
+              <thead><tr><th>Model</th><th>R²</th><th>RMSE</th><th>MAE</th><th>MSE</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let m of modelComparison">
+                  <td [style.color]="m.model===bestModel ? 'var(--amber)' : null">{{ m.model }}</td>
+                  <td>{{ m.r2 }}</td>
+                  <td>{{ m.rmse }}</td>
+                  <td>{{ m.mae }}</td>
+                  <td>{{ m.mse }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </ng-container>
+
+          <ng-container *ngIf="importantFeatureNames.length">
+            <div class="subhead">Important features ({{ importantFeatureCount }})</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              <span class="col-badge numeric" *ngFor="let f of importantFeatureNames">{{ f }}</span>
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="crossValidation">
+            <div class="subhead">Cross-validation</div>
+            <p class="empty-hint">Mean {{ crossValidation.mean }} across {{ crossValidation.scores.length }} folds: [{{ crossValidation.scores.join(', ') }}]</p>
+          </ng-container>
+
+          <ng-container *ngIf="predictions.length">
+            <div class="subhead">Sample predictions</div>
+            <table class="pred-table">
+              <thead><tr><th>Actual</th><th>Predicted</th><th>Abs. error</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let p of predictions">
+                  <td>{{ p.actual }}</td>
+                  <td>{{ p.predicted }}</td>
+                  <td>{{ p.error }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </ng-container>
+
+          <ng-container *ngIf="reportSections.length">
+            <!-- <div class="stage-title">AI Generated Report</div> -->
+            
+            <div class="report-section"*ngFor="let section of reportSections">
+              <br>
+              <div class="stage-title">{{ section.title }}</div>
+              
+              <div class="report-card"*ngFor="let item of section.sections">
+                
+                <div class="subhead" style="color:var(--amber)">
+                  {{ item.heading }}
+                </div>
+
+                <div class="empty-hint"
+                  [innerText]="item.content">
+                </div>
+
+              </div>
+
+            </div>
+
+          </ng-container>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <div class="titleblock">
+    <div class="tb-grid">
+      <div class="tb-cell"><div class="k">Project</div><div class="v">AutoML Pipeline — Live</div></div>
+      <div class="tb-cell"><div class="k">Backend</div><div class="v">127.0.0.1:8000</div></div>
+      <div class="tb-cell"><div class="k">Scale</div><div class="v">NTS</div></div>
+      <div class="tb-cell"><div class="k">Rev</div><div class="v">05</div></div>
+    </div>
+  </div>
+</main>
+
+<footer>AUTOML // SCHEMATIC — connected to your local backend. Nothing is sent anywhere else.</footer>
